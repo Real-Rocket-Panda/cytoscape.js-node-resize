@@ -372,7 +372,7 @@
 
             // the controls object represents the grapples and bounding rectangle
             // only one can exist at any time
-            var controls = [];
+            var controls = {};
 
             // Events to bind and unbind
             var eUnselectNode, ePositionNode, eZoom, ePan, eSelectNode, eRemoveNode, eAddNode, eFreeNode, eUndoRedo;
@@ -446,7 +446,7 @@
                 for(var i=0; i < grappleLocations.length; i++) {
                     var location = grappleLocations[i];
                     var isActive = true;
-                    if ( controls.length>=1 || options.isNoResizeMode(node) || (options.isFixedAspectRatioResizeMode(node) && location.indexOf("center") >= 0)) {
+                    if ( Object.keys(controls).length>=1 || options.isNoResizeMode(node) || (options.isFixedAspectRatioResizeMode(node) && location.indexOf("center") >= 0)) {
                         isActive = false;
                     }
                     this.grapples.push(new Grapple(node, this, location, isActive))
@@ -1092,33 +1092,23 @@
                     oldPos = {x: undefined, y: undefined};
                     currentPos = {x: 0, y: 0};
 
-                    if(controls.length>=1) {
-                        controls.forEach(function(control){
-                            control.remove();
-                            control = null;
-                        });
-                    }
+                    var control = controls[e.target.id()];
+                    control.remove();
+                    delete controls[e.target.id()];
+                    
 
-                    var selectedNodes = cy.nodes(':selected');
-                    selectedNodes.forEach(function(node, i ,nodes){
-                        controls.push(new ResizeControls(node));
-                    });
+                    // var selectedNodes = cy.nodes(':selected');
+                    // selectedNodes.forEach(function(node, i ,nodes){
+                    //     controls[node.id()] = new ResizeControls(node);
+                    // });
                 });
 
                 cy.on("select", "node", eSelectNode = function(e) {
                     var node = e.target;
-
-                    // if(controls.length>=1) {
-                    //     controls.forEach(function(control){
-                    //     control.remove();
-                    //     control = null;
-                    //     });
-                    // }
-
                     var selectedNodes = cy.nodes(':selected');
                     if(!options.isNoControlsMode(node)) {
                         selectedNodes.forEach(function(node, i ,nodes){
-                            controls.push(new ResizeControls(node));
+                            controls[node.id()] = new ResizeControls(node);
                         });
                     }
                 });
@@ -1142,8 +1132,9 @@
 
                 // listens for position event and refreshGrapples if necessary
                 cy.on("position", "node", ePositionNode = function(e) {
-                    if(controls.length>=1) {
-                        controls.forEach(function(control){
+                    if(Object.keys(controls).length>=1) {
+                        Object.keys(controls).map((key)=>{
+                            var control = controls[key];
                             // It seems that parent.position() doesn't always give consistent result.
                             // But calling it here makes the results consistent, by updating it to the correct value, somehow.
                             // Maybe there is some cache on cytoscape side preventing a position update.
@@ -1163,25 +1154,21 @@
                 });
 
                 cy.on("zoom", eZoom = function() {
-                    if(controls.length>=1) {
-                        controls.forEach(function(control) {
-                            control.update();
-                        });
+                    if(Object.keys(controls).length>=1) {
+                        Object.keys(controls).map((key) => controls[key].update());
                     }
                 });
 
                 cy.on("pan", ePan = function() {
-                    if(controls.length>=1) {
-                        controls.forEach(function(control) {
-                            control.update();
-                        });
+                    if(Object.keys(controls).length>=1) {
+                        Object.keys(controls).map((key) => controls[key].update());
                     }
                 });
 
                 cy.on("afterUndo afterRedo", eUndoRedo = function() {
-                    if ( controls.length>=1 ) {
-                        controls.forEach(function(control){
-                            control.update();
+                    if ( Object.keys(controls).length>=1 ) {
+                        Object.keys(controls).map((key) => {
+                            controls[key].update();
                             oldPos = {x: undefined, y: undefined};
                         });
                     }
@@ -1263,10 +1250,8 @@
                     // If this is the first time it means that resize is already performed through user interaction.
                     // In this case just removing the first time parameter is enough.
                     if (arg.firstTime) {
-                        if (controls.length>=1) {
-                            controls.forEach(function(control){
-                                control.update(); // refresh grapplers after node resize
-                            });
+                        if (Object.keys(controls).length>=1) {
+                            Object.keys(controls).map((key) => controls[key].update()); // refresh grapplers after node resize
                         }
                         delete arg.firstTime;
                         return arg;
@@ -1315,10 +1300,8 @@
                     
                     cy.endBatch();
 
-                    if (control.size()>=1) {
-                        controls.forEach(function(control){
-                            control.update(); // refresh grapplers after node resize
-                        }); 
+                    if (Object.keys(controls).length>=1) {
+                        Object.keys(controls).map((key) => controls[key].update()); // refresh grapples after node resize
                     }
 
                     return result;
@@ -1355,22 +1338,23 @@
             var api = {}; // The extension api to be exposed
 
             api.refreshGrapples = function() {
-              if (controls.length>=1) {
+              if (Object.keys(controls).length>=1) {
                 // We need to remove old controls and create a new one rather then just updating controls
                 // We need this because the parent may change status and become resizable or not-resizable
-                controls.forEach(function(control){
-                    var parent = control.parent;
-                    control.remove();
-                    control = new ResizeControls(parent);
+                
+                Object.keys(controls).map((key) => {
+                    var parent = controls[key].parent;
+                    controls[key].remove();
+                    controls[key] = new ResizeControls(parent);
                 });
               }
             }
             // Simply remove grapples even if node is selected
             api.removeGrapples = function() {
-            if (controls.length>=1){
-                controls.forEach(function(control){
-                control.remove();
-                control = null;
+            if (Object.keys(controls).length>=1){
+                Object.keys(controls).map((key) => {
+                    controls[key].remove();
+                    delete controls[key]
                 });
               }
             }
