@@ -1088,28 +1088,28 @@
                 var oldPos = {x: undefined, y: undefined};
                 var currentPos = {x : 0, y : 0};
                 cy.on("unselect", "node", eUnselectNode = function(e) {
+                    if(controls[e.target.id()]==undefined)
+                        return;
                     // reinitialize old and current compound positions
                     oldPos = {x: undefined, y: undefined};
                     currentPos = {x: 0, y: 0};
-
                     var control = controls[e.target.id()];
                     control.remove();
                     delete controls[e.target.id()];
-                    
-
-                    // var selectedNodes = cy.nodes(':selected');
-                    // selectedNodes.forEach(function(node, i ,nodes){
-                    //     controls[node.id()] = new ResizeControls(node);
-                    // });
+            
                 });
 
                 cy.on("select", "node", eSelectNode = function(e) {
-                    var node = e.target;
-                    var selectedNodes = cy.nodes(':selected');
-                    if(!options.isNoControlsMode(node)) {
-                        selectedNodes.forEach(function(node, i ,nodes){
-                            controls[node.id()] = new ResizeControls(node);
-                        });
+                    var target = e.target;
+                    if(!options.isNoControlsMode(target)) {
+                        if(Object.keys(controls).length==1){
+                            for(let key in controls){
+                                controls[key].remove();
+                                controls[key]=null;
+                                controls[key] = new ResizeControls(cy.$id(key));
+                            }
+                        }
+                        controls[target.id()] = new ResizeControls(target);
                     }
                 });
 
